@@ -42,8 +42,17 @@ Règles importantes :
       generationConfig: { temperature: 0.7, maxOutputTokens: 4096 }
     });
 
-    const geminiResponse = await callGemini(apiKey, requestBody);
+       const geminiResponse = await callGemini(apiKey, requestBody);
+
+    if (geminiResponse.error) {
+      throw new Error('Gemini error: ' + geminiResponse.error.message + ' (code ' + geminiResponse.error.code + ')');
+    }
+
     const rawText = geminiResponse.candidates?.[0]?.content?.parts?.[0]?.text || '';
+
+    if (!rawText) {
+      throw new Error('Gemini no text — cle invalide ou quota depasse.');
+    }
 
     // Nettoie les éventuels blocs markdown que Gemini ajoute parfois
     const cleaned = rawText
