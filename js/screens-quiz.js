@@ -43,15 +43,17 @@ SCREENS.quiz = function(){
   return { html };
 };
 
-function startQuiz(){
-  QS = { idx:0, answers:[], answered:false, selected:null, start:Date.now() };
+function startQuiz(useGenerated){
+  const quizData = (useGenerated && GENERATED_QUIZ) ? GENERATED_QUIZ : QUIZ;
+  QS = { idx:0, answers:[], answered:false, selected:null, start:Date.now(), quizData };
   go('quizplay');
 }
 
 SCREENS.quizplay = function(){
   if(!QS){ return SCREENS.quiz(); }
-  const total = QUIZ.questions.length;
-  const q = QUIZ.questions[QS.idx];
+  const qd = QS.quizData;
+  const total = qd.questions.length;
+  const q = qd.questions[QS.idx];
   const progPct = Math.round((QS.idx)/total*100);
   const keys = ['A','B','C','D'];
 
@@ -60,7 +62,7 @@ SCREENS.quizplay = function(){
       <div class="crumbs" style="margin-bottom:14px">
         <button onclick="quitQuiz()">${ic('arrowLeft')} Quitter</button>
         <span class="sep">${ic('chevR')}</span>
-        <span class="cur">${QUIZ.subject} · ${QUIZ.chapter}</span>
+        <span class="cur">${qd.subject} · ${qd.chapter}</span>
       </div>
       <div class="quiz-top">
         <span class="q-count"><b>${QS.idx+1}</b> / ${total}</span>
@@ -69,7 +71,7 @@ SCREENS.quizplay = function(){
       </div>
 
       <div class="card qcard">
-        <span class="q-subj">${chip(QUIZ.subject+' · '+QUIZ.difficulty, 'blue', 'anatomy')}</span>
+        <span class="q-subj">${chip(qd.subject+' · '+qd.difficulty, 'blue', 'anatomy')}</span>
         <div class="q-text">${q.q}</div>
         <div class="q-options" id="qopts">
           ${q.opts.map((o,i)=>`
@@ -100,7 +102,7 @@ SCREENS.quizplay = function(){
 function answer(i){
   if(QS.answered) return;
   QS.answered = true; QS.selected = i;
-  const q = QUIZ.questions[QS.idx];
+  const q = QS.quizData.questions[QS.idx];
   const correct = q.correct;
   const opts = $$('#qopts .q-opt');
   opts.forEach((btn,idx)=>{
@@ -110,7 +112,7 @@ function answer(i){
     else btn.classList.add('dimmed');
   });
   const ok = i === correct;
-  QS.answers.push({ q: QS.idx, correct: ok, subject: QUIZ.subject });
+  QS.answers.push({ q: QS.idx, correct: ok, subject: QS.quizData.subject });
   const exp = $('#qexplain');
   exp.classList.add('show'); if(ok) exp.classList.add('ok');
   $('#qehead').innerHTML = ok ? ic('checkCircle')+' Bonne réponse !' : ic('bulb')+' Pas tout à fait — voici pourquoi';
@@ -119,7 +121,7 @@ function answer(i){
 }
 
 function nextQ(){
-  if(QS.idx < QUIZ.questions.length-1){ QS.idx++; QS.answered=false; QS.selected=null; render(); }
+  if(QS.idx < QS.quizData.questions.length-1){ QS.idx++; QS.answered=false; QS.selected=null; render(); }
   else { stopTimer(); go('quizresult'); }
 }
 function quitQuiz(){ stopTimer(); go('quiz'); }
@@ -137,7 +139,8 @@ function stopTimer(){ clearInterval(qTimerInt); }
 
 SCREENS.quizresult = function(){
   if(!QS){ return SCREENS.quiz(); }
-  const total = QUIZ.questions.length;
+  const qd = QS.quizData;
+  const total = qd.questions.length;
   const right = QS.answers.filter(a=>a.correct).length;
   const pct = Math.round(right/total*100);
   const secs = Math.floor((Date.now()-QS.start)/1000);
@@ -187,7 +190,7 @@ SCREENS.quizresult = function(){
 };
 
 function shareQuiz(){
-  const link = 'synapse.upc/qcm/anat-cv-9f3';
+  const link = 'synapse-majeste.netlify.app/qcm/' + (QS.quizData.id || 'anat-cv');
   if(navigator.clipboard) navigator.clipboard.writeText('https://'+link).catch(()=>{});
   toast('Lien du QCM copié — partage-le à tes amis !', 'copy');
 }

@@ -7,6 +7,9 @@ const App = {
   theme: localStorage.getItem('synapse_theme') || 'light',
 };
 
+// QCM généré par l'IA — null tant qu'aucune génération n'a été faite
+let GENERATED_QUIZ = null;
+
 function el(html){ const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstElementChild; }
 function $(s, r=document){ return r.querySelector(s); }
 function $$(s, r=document){ return [...r.querySelectorAll(s)]; }

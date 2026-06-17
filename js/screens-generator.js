@@ -64,17 +64,59 @@ SCREENS.generator = function(p){
 function setGen(key, val){ GEN[key] = val; if(key==='subId') GEN.chId=null; render(); }
 function setGenCount(v){ GEN.count = +v; const e=$('#genCount'); if(e) e.textContent=v; }
 
-function runGen(){
+async function runGen(){
   GEN.phase = 'loading';
   render();
+
   const steps = ['Analyse du chapitre…','Sélection des notions clés…','Rédaction des questions…','Génération des corrections…','Finalisation du QCM…'];
-  let i=0;
-  const stepEl = ()=>$('#genStep');
-  const int = setInterval(()=>{
-    i++;
-    if(stepEl() && i<steps.length){ stepEl().textContent = steps[i]; }
-    if(i>=steps.length){ clearInterval(int); GEN.phase='ready'; render(); }
-  }, 720);
+  let stepIdx = 0;
+  const stepInt = setInterval(() => {
+    stepIdx++;
+    const e = document.getElementById('genStep');
+    if (e && stepIdx < steps.length) e.textContent = steps[stepIdx];
+  }, 700);
+
+  const sub = SUBJECTS.find(s => s.id === GEN.subId) || SUBJECTS[0];
+  const chaps = CHAPTERS[sub.id] || genericChapters(sub);
+  const chap = GEN.chId ? chaps.find(c => c.id === GEN.chId) : null;
+
+  try {
+    const resp = await fetch('/.netlify/functions/generate-qcm', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        subject: sub.name,
+        chapter: chap ? chap.title : null,
+        count: GEN.count,
+        difficulty: GEN.diff
+      })
+    });
+
+    clearInterval(stepInt);
+    if (!resp.ok) throw new Error('Erreur serveur ' + resp.status);
+
+    const data = await resp.json();
+    if (!data.questions?.length) throw new Error('Réponse invalide');
+
+    GENERATED_QUIZ = {
+      id: 'gen-' + Date.now(),
+      subject: sub.name,
+      subjectColor: sub.color,
+      chapter: chap ? chap.title : 'Tous les chapitres',
+      difficulty: GEN.diff,
+      questions: data.questions
+    };
+
+    GEN.phase = 'ready';
+    render();
+
+  } catch(err) {
+    clearInterval(stepInt);
+    console.error('Génération QCM :', err);
+    GEN.phase = 'form';
+    render();
+    toast('Génération échouée. Vérifie ta connexion et réessaie.', 'warn');
+  }
 }
 
 function genLoading(){
@@ -102,7 +144,7 @@ function genReady(sub){
           ${chip(GEN.diff, GEN.diff==='Difficile'?'coral':GEN.diff==='Facile'?'accent':'gold','gauge')}
         </div>
         <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
-          <button class="btn btn-primary btn-lg" onclick="startQuiz()">${ic('play')} Passer le QCM maintenant</button>
+          <button class="btn btn-primary btn-lg" onclick="startQuiz(true)">${ic('play')} Passer le QCM maintenant</button>
           <button class="btn btn-ghost btn-lg" onclick="shareGen()">${ic('share')} Partager</button>
         </div>
         <button class="link-btn" style="margin-top:18px" onclick="GEN.phase='form';render()">${ic('arrowLeft')} Générer un autre QCM</button>
