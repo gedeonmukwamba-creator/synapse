@@ -1,4 +1,4 @@
-/* Synapse — Netlify Function : génération de QCM via Gemini Flash */
+/* Synapse — Netlify Function : génération de QCM via Groq (Llama 3.1) */
 
 const https = require('https');
 
@@ -9,13 +9,10 @@ exports.handler = async (event) => {
 
   try {
     const { subject, chapter, count, difficulty } = JSON.parse(event.body);
-    const apiKey = process.env.GEMINI_API_KEY;
+    const apiKey = process.env.GROQ_API_KEY;
 
     if (!apiKey) {
-      return {
-        statusCode: 500,
-        body: JSON.stringify({ error: 'Clé API Gemini non configurée.' })
-      };
+      return { statusCode: 500, body: JSON.stringify({ error: 'Clé API Groq non configurée.' }) };
     }
 
     const chapStr = chapter ? `, chapitre : "${chapter}"` : ' (tous chapitres)';
@@ -38,23 +35,24 @@ Règles importantes :
 - Aucun markdown, aucun texte en dehors du JSON`;
 
     const requestBody = JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { temperature: 0.7, maxOutputTokens: 4096 }
+      model: 'llama-3.1-70b-versatile',
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.7,
+      max_tokens: 4096
     });
 
-       const geminiResponse = await callGemini(apiKey, requestBody);
+    const groqResponse = await callGroq(apiKey, requestBody);
 
-    if (geminiResponse.error) {
-      throw new Error('Gemini error: ' + geminiResponse.error.message + ' (code ' + geminiResponse.error.code + ')');
+    if (groqResponse.error) {
+      throw new Error('Groq error : ' + groqResponse.error.message);
     }
 
-    const rawText = geminiResponse.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    const rawText = groqResponse.choices?.[0]?.message?.content || '';
 
     if (!rawText) {
-      throw new Error('Gemini no text — cle invalide ou quota depasse.');
+      throw new Error('Groq n\'a retourné aucun texte.');
     }
 
-    // Nettoie les éventuels blocs markdown que Gemini ajoute parfois
     const cleaned = rawText
       .replace(/^```json\s*/i, '')
       .replace(/^```\s*/i, '')
@@ -64,7 +62,7 @@ Règles importantes :
     const parsed = JSON.parse(cleaned);
 
     if (!parsed.questions || !Array.isArray(parsed.questions) || parsed.questions.length === 0) {
-      throw new Error('Format de réponse inattendu de Gemini');
+      throw new Error('Format de réponse inattendu de Groq');
     }
 
     return {
@@ -75,21 +73,19 @@ Règles importantes :
 
   } catch (err) {
     console.error('generate-qcm error:', err.message);
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: err.message })
-    };
+    return { statusCode: 500, body: JSON.stringify({ error: err.message }) };
   }
 };
 
-function callGemini(apiKey, body) {
+function callGroq(apiKey, body) {
   return new Promise((resolve, reject) => {
     const options = {
-      hostname: 'generativelanguage.googleapis.com',
-     path: `/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+      hostname: 'api.groq.com',
+      path: '/openai/v1/chat/completions',
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + apiKey,
         'Content-Length': Buffer.byteLength(body)
       }
     };
@@ -99,7 +95,7 @@ function callGemini(apiKey, body) {
       res.on('data', chunk => { data += chunk; });
       res.on('end', () => {
         try { resolve(JSON.parse(data)); }
-        catch (e) { reject(new Error('Réponse Gemini non parseable : ' + data.slice(0, 200))); }
+        catch (e) { reject(new Error('Réponse Groq non parseable : ' + data.slice(0, 200))); }
       });
     });
 
