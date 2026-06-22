@@ -333,4 +333,29 @@ h1 svg, h2 svg, h3 svg, h4 svg { width: 1.05em; height: 1.05em; vertical-align: 
   .chapter .ch-actions .btn { flex: 1; }
   .lb-podium { gap: 7px; }
   .podium .p-av { width: 46px; height: 46px; font-size: 17px; }
+  .pdf-card { flex-wrap: wrap; }
+  .pdf-card .pdf-body { min-width: 0; }
 }
+
+/* ---------- PDF library ---------- */
+.pdf-card { display: flex; align-items: center; gap: 14px; padding: 14px 18px; }
+.pdf-card + .pdf-card { margin-top: 10px; }
+.pdf-ic { width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; flex: none; background: var(--primary-soft); color: var(--primary-strong); }
+.pdf-ic svg { width: 22px; height: 22px; }
+.pdf-body { flex: 1; min-width: 0; }
+.pdf-title { font-weight: 700; font-size: 14.5px; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pdf-meta { font-size: 12px; color: var(--muted); margin-top: 3px; }
+.pdf-empty { padding: 22px; text-align: center; color: var(--muted); font-size: 14px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+.pdf-empty svg { width: 18px; height: 18px; flex: none; }
+.pdf-loading { padding: 18px; text-align: center; color: var(--muted); font-size: 14px; }
+
+/* ---------- Modal ---------- */
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.46); z-index: 300; display: flex; align-items: center; justify-content: center; padding: 20px; }
+.modal-card { background: var(--surface); border-radius: 22px; padding: 26px 28px; width: 100%; max-width: 440px; box-shadow: var(--shadow-lg); border: 1px solid var(--line); }
+.modal-card h3 { font-size: 19px; margin: 0; }
+.modal-label { display: block; font-weight: 700; font-size: 13.5px; margin-bottom: 6px; color: var(--ink-2); }
+.modal-input { width: 100%; padding: 11px 14px; border: 1.5px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--ink); font: inherit; font-size: 14.5px; outline: none; box-sizing: border-box; transition: border-color .15s; }
+.modal-input:focus { border-color: var(--accent); }
+.pdf-drop-zone { border: 2px dashed var(--line); border-radius: 12px; padding: 22px; text-align: center; cursor: pointer; color: var(--muted); font-weight: 600; font-size: 14px; transition: border-color .15s, background .15s; }
+.pdf-drop-zone:hover { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-strong); }
+.pdf-drop-zone svg { width: 18px; height: 18px; vertical-align: -3px; }

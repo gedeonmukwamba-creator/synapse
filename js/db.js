@@ -31,6 +31,46 @@ async function submitScore(subject, correct, total) {
   }
 }
 
+async function uploadCourse(file, subjectId, chapterId, title) {
+  const pseudo = getPseudo() || 'Anonyme';
+  try {
+    const supa = getSupa();
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const path = `${subjectId}/${chapterId}/${Date.now()}-${safeName}`;
+    const { data: upload, error: uploadErr } = await supa.storage
+      .from('course-pdfs')
+      .upload(path, file, { contentType: 'application/pdf', upsert: false });
+    if (uploadErr) throw uploadErr;
+    const { data: urlData } = supa.storage.from('course-pdfs').getPublicUrl(upload.path);
+    const { error: insertErr } = await supa.from('course_files').insert({
+      subject: subjectId, chapter: chapterId, title,
+      file_path: urlData.publicUrl, uploaded_by: pseudo
+    });
+    if (insertErr) throw insertErr;
+    return true;
+  } catch(e) {
+    console.warn('Upload échoué :', e.message);
+    return false;
+  }
+}
+
+async function fetchCourses(subjectId, chapterId) {
+  try {
+    const supa = getSupa();
+    const { data, error } = await supa
+      .from('course_files')
+      .select('id, subject, chapter, title, file_path, uploaded_by, created_at')
+      .eq('subject', subjectId)
+      .eq('chapter', chapterId)
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    return data || [];
+  } catch(e) {
+    console.warn('Cours non chargés :', e.message);
+    return [];
+  }
+}
+
 async function fetchLeaderboard() {
   const timeoutPromise = new Promise((_, reject) =>
     setTimeout(() => reject(new Error('Timeout : classement non chargé en 8s')), 8000)

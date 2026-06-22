@@ -112,9 +112,108 @@ SCREENS.chapter = function(p){
           <p>${t.d}</p>
           <span class="rt-go">${t.label} ${ic('arrowRight')}</span>
         </div>`).join('')}
-    </div>`;
-  return { html };
+    </div>
+
+    <div class="section-head" style="margin-top:28px">
+      <div><h2>Cours PDF</h2><div class="sub">Documents partagés par les étudiants</div></div>
+      <button class="btn btn-soft btn-sm" onclick="openPdfUpload('${sub.id}','${ch.id}')">
+        ${ic('plus')} Ajouter
+      </button>
+    </div>
+    <div id="chapter-pdfs"><div class="card pdf-loading">Chargement des cours...</div></div>`;
+
+  return { html, init: async function(){ const pdfs = await fetchCourses(sub.id, ch.id); renderChapterPdfs(pdfs); } };
 };
+
+function renderChapterPdfs(pdfs) {
+  const container = document.getElementById('chapter-pdfs');
+  if (!container) return;
+  if (!pdfs.length) {
+    container.innerHTML = `<div class="card pdf-empty">${ic('doc')} Aucun cours PDF pour ce chapitre. Sois le premier à en partager un !</div>`;
+    return;
+  }
+  container.innerHTML = pdfs.map(p => {
+    const date = new Date(p.created_at).toLocaleDateString('fr-FR', {day:'numeric', month:'short', year:'numeric'});
+    return `<div class="card pdf-card">
+      <div class="pdf-ic">${ic('doc')}</div>
+      <div class="pdf-body">
+        <div class="pdf-title">${p.title}</div>
+        <div class="pdf-meta">Par ${p.uploaded_by} · ${date}</div>
+      </div>
+      <a href="${p.file_path}" target="_blank" rel="noopener" class="btn btn-soft btn-sm">${ic('arrowRight')} Ouvrir</a>
+    </div>`;
+  }).join('');
+}
+
+function openPdfUpload(subId, chId) {
+  const existing = document.getElementById('pdf-modal');
+  if (existing) existing.remove();
+  const sub = SUBJECTS.find(s => s.id === subId);
+  const allChaps = CHAPTERS[subId] || [];
+  const ch = allChaps.find(c => c.id === chId) || {};
+  const subName = sub ? sub.name : subId;
+  const chTitle = ch.title || 'Chapitre';
+  const modal = el(`<div id="pdf-modal" class="modal-overlay" onclick="if(event.target===this)closePdfModal()">
+    <div class="modal-card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+        <h3>Ajouter un cours PDF</h3>
+        <button class="icon-btn" onclick="closePdfModal()" style="flex:none">${ic('xCircle')}</button>
+      </div>
+      <p style="color:var(--muted);margin:0 0 20px;font-size:13.5px">${subName} · ${chTitle}</p>
+      <div>
+        <label class="modal-label">Titre du document</label>
+        <input type="text" id="pdf-title" placeholder="Ex: Résumé ostéologie Ch.1" class="modal-input">
+      </div>
+      <div style="margin-top:16px">
+        <label class="modal-label">Fichier PDF (max 10 Mo)</label>
+        <div class="pdf-drop-zone" onclick="document.getElementById('pdf-file-input').click()">
+          <span id="pdf-drop-label" style="display:inline-flex;align-items:center;gap:7px">${ic('doc')} Cliquer pour choisir un PDF</span>
+          <input type="file" id="pdf-file-input" accept=".pdf,application/pdf" style="display:none" onchange="onPdfFileChange(this)">
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:24px;justify-content:flex-end">
+        <button class="btn btn-ghost" onclick="closePdfModal()">Annuler</button>
+        <button class="btn btn-accent" id="pdf-upload-btn" onclick="submitPdfUpload('${subId}','${chId}')">${ic('arrowRight')} Uploader</button>
+      </div>
+    </div>
+  </div>`);
+  document.body.appendChild(modal);
+}
+
+function onPdfFileChange(input) {
+  const label = document.getElementById('pdf-drop-label');
+  if (label && input.files[0]) {
+    const name = input.files[0].name.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    label.innerHTML = ic('check') + ' ' + name;
+    label.style.color = 'var(--accent-strong)';
+  }
+}
+
+function closePdfModal() {
+  const m = document.getElementById('pdf-modal');
+  if (m) m.remove();
+}
+
+async function submitPdfUpload(subId, chId) {
+  const titleEl = document.getElementById('pdf-title');
+  const fileInput = document.getElementById('pdf-file-input');
+  const title = titleEl ? titleEl.value.trim() : '';
+  const file = fileInput ? fileInput.files[0] : null;
+  if (!title) { toast('Ajoute un titre au document', 'warn'); return; }
+  if (!file) { toast('Sélectionne un fichier PDF', 'warn'); return; }
+  if (file.size > 10 * 1024 * 1024) { toast('Fichier trop grand (max 10 Mo)', 'warn'); return; }
+  const btn = document.getElementById('pdf-upload-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Upload en cours…'; }
+  const ok = await uploadCourse(file, subId, chId, title);
+  closePdfModal();
+  if (ok) {
+    toast('Cours ajouté avec succès', 'check');
+    const pdfs = await fetchCourses(subId, chId);
+    renderChapterPdfs(pdfs);
+  } else {
+    toast("Erreur lors de l'upload", 'warn');
+  }
+}
 
 function genericChapters(sub){
   const titles = ['Introduction & notions fondamentales','Structures et classification','Mécanismes principaux','Applications cliniques','Approfondissement & cas'];
