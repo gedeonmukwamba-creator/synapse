@@ -65,6 +65,12 @@ function setGen(key, val){ GEN[key] = val; if(key==='subId') GEN.chId=null; rend
 function setGenCount(v){ GEN.count = +v; const e=$('#genCount'); if(e) e.textContent=v; }
 
 async function runGen(){
+  if (!(await canGenQcm())) {
+    toast(`Limite atteinte — ${FREE_QCM_PER_DAY} QCM gratuits/jour. Passe à Premium !`, 'star');
+    go('premium');
+    return;
+  }
+  incrementGenUsage();
   GEN.phase = 'loading';
   render();
 

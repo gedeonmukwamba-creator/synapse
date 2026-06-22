@@ -236,6 +236,11 @@ function generateQcmFromPdfBtn(btn) {
 }
 
 async function generateQcmFromPdf(pdfUrl, subjectId, pdfTitle) {
+  if (!(await canGenQcm())) {
+    toast(`Limite atteinte — ${FREE_QCM_PER_DAY} QCM gratuits/jour. Passe à Premium !`, 'star');
+    go('premium');
+    return;
+  }
   document.querySelectorAll('.pdf-gen-btn').forEach(b => {
     b.disabled = true;
     b.innerHTML = ic('refresh') + ' En cours…';
@@ -246,6 +251,7 @@ async function generateQcmFromPdf(pdfUrl, subjectId, pdfTitle) {
     const pdfText = await extractPdfText(pdfUrl);
     if (!pdfText.trim()) throw new Error('PDF vide ou non lisible');
 
+    incrementGenUsage();
     toast('Génération des questions…', 'sparkle');
 
     const sub = SUBJECTS.find(s => s.id === subjectId);

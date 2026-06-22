@@ -46,6 +46,7 @@ const NAV = [
   { id:'summary', label:'Résumés', icon:'doc' },
   { id:'resources', label:'Ressources', icon:'play' },
   { id:'leaderboard', label:'Classement', icon:'trophy' },
+  { id:'premium', label:'Passer Premium', icon:'star' },
 ];
 
 function go(view, params={}){

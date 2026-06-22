@@ -71,6 +71,65 @@ async function fetchCourses(subjectId, chapterId) {
   }
 }
 
+/* ── Freemium ── */
+
+const FREE_QCM_PER_DAY = 3;
+let _premiumCache = null;
+
+async function checkPremium() {
+  if (_premiumCache !== null) return _premiumCache;
+  const pseudo = getPseudo();
+  if (!pseudo) { _premiumCache = false; return false; }
+  try {
+    const { data } = await getSupa()
+      .from('payments')
+      .select('id')
+      .eq('pseudo', pseudo)
+      .eq('status', 'active')
+      .gt('expires_at', new Date().toISOString())
+      .limit(1);
+    _premiumCache = !!(data && data.length > 0);
+    return _premiumCache;
+  } catch(e) { _premiumCache = false; return false; }
+}
+
+function resetPremiumCache() { _premiumCache = null; }
+
+function getGenUsageToday() {
+  const stored = JSON.parse(localStorage.getItem('synapse_gen_today') || '{}');
+  const today = new Date().toISOString().slice(0, 10);
+  return stored.date === today ? (stored.count || 0) : 0;
+}
+
+function incrementGenUsage() {
+  const today = new Date().toISOString().slice(0, 10);
+  localStorage.setItem('synapse_gen_today', JSON.stringify({ date: today, count: getGenUsageToday() + 1 }));
+}
+
+async function canGenQcm() {
+  if (await checkPremium()) return true;
+  return getGenUsageToday() < FREE_QCM_PER_DAY;
+}
+
+async function submitPayment(phone, operator, transactionRef, amount) {
+  const pseudo = getPseudo();
+  if (!pseudo) return { error: 'Pseudo requis — configure ton pseudo dans le classement d\'abord' };
+  try {
+    const { error } = await getSupa().from('payments').insert({ pseudo, phone, operator, transaction_ref: transactionRef, amount });
+    if (error) throw error;
+    return { ok: true };
+  } catch(e) { return { error: e.message }; }
+}
+
+async function fetchAllPayments() {
+  try {
+    const { data, error } = await getSupa()
+      .from('payments').select('*').order('created_at', { ascending: false }).limit(100);
+    if (error) throw error;
+    return data || [];
+  } catch(e) { console.warn('Paiements non chargés:', e.message); return []; }
+}
+
 async function fetchLeaderboard() {
   const timeoutPromise = new Promise((_, reject) =>
     setTimeout(() => reject(new Error('Timeout : classement non chargé en 8s')), 8000)
