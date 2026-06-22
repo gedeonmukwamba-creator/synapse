@@ -122,11 +122,12 @@ function answer(i){
 
 function nextQ(){
   if(QS.idx < QS.quizData.questions.length-1){ QS.idx++; QS.answered=false; QS.selected=null; render(); }
- else {
-  stopTimer();
-  const correct = QS.answers.filter(a=>a.correct).length;
-  submitScore(QS.quizData.subject, correct, QS.quizData.questions.length);
-  go('quizresult');
+  else {
+    stopTimer();
+    const correct = QS.answers.filter(a=>a.correct).length;
+    submitScore(QS.quizData.subject, correct, QS.quizData.questions.length);
+    go('quizresult');
+  }
 }
 function quitQuiz(){ stopTimer(); go('quiz'); }
 
