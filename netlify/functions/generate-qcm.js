@@ -12,7 +12,10 @@ exports.handler = async (event) => {
     const apiKey = process.env.GROQ_API_KEY;
 
     if (!apiKey) {
-      return { statusCode: 500, body: JSON.stringify({ error: 'Clé API Groq non configurée.' }) };
+      return {
+        statusCode: 500,
+        body: JSON.stringify({ error: 'Clé API Groq non configurée.' })
+      };
     }
 
     const chapStr = chapter ? `, chapitre : "${chapter}"` : ' (tous chapitres)';
@@ -73,7 +76,10 @@ Règles importantes :
 
   } catch (err) {
     console.error('generate-qcm error:', err.message);
-    return { statusCode: 500, body: JSON.stringify({ error: err.message }) };
+    return {
+      statusCode: 500,
+      body: JSON.stringify({ error: err.message })
+    };
   }
 };
 
