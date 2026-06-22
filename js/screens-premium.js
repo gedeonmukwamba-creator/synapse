@@ -1,6 +1,6 @@
 /* Synapse — Premium & Admin */
 
-const PAYMENT_PHONE = '0XX XXX XXXX'; // ← mets ton numéro Mobile Money ici
+const PAYMENT_PHONE = '0815319253'; // ← mets ton numéro Mobile Money ici
 const PAYMENT_PRICE = '5 USD';
 const PAYMENT_DAYS = 30;
 
