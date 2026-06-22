@@ -140,7 +140,14 @@ function renderChapterPdfs(pdfs) {
         <div class="pdf-title">${p.title}</div>
         <div class="pdf-meta">Par ${p.uploaded_by} · ${date}</div>
       </div>
-      <a href="${p.file_path}" target="_blank" rel="noopener" class="btn btn-soft btn-sm">${ic('arrowRight')} Ouvrir</a>
+      <div style="display:flex;gap:8px;flex:none">
+        <a href="${p.file_path}" target="_blank" rel="noopener" class="btn btn-soft btn-sm">${ic('arrowRight')} Ouvrir</a>
+        <button class="btn btn-accent btn-sm pdf-gen-btn"
+          data-url="${p.file_path}"
+          data-subject="${p.subject}"
+          data-title="${p.title.replace(/"/g,'&quot;')}"
+          onclick="generateQcmFromPdfBtn(this)">${ic('sparkle')} QCM</button>
+      </div>
     </div>`;
   }).join('');
 }
@@ -223,3 +230,71 @@ function genericChapters(sub){
   }));
 }
 function animBars(){ /* progress bars painted by paintProgress() in render() */ }
+
+function generateQcmFromPdfBtn(btn) {
+  generateQcmFromPdf(btn.dataset.url, btn.dataset.subject, btn.dataset.title);
+}
+
+async function generateQcmFromPdf(pdfUrl, subjectId, pdfTitle) {
+  document.querySelectorAll('.pdf-gen-btn').forEach(b => {
+    b.disabled = true;
+    b.innerHTML = ic('refresh') + ' En cours…';
+  });
+  toast('Lecture du PDF en cours…', 'doc');
+
+  try {
+    const pdfText = await extractPdfText(pdfUrl);
+    if (!pdfText.trim()) throw new Error('PDF vide ou non lisible');
+
+    toast('Génération des questions…', 'sparkle');
+
+    const sub = SUBJECTS.find(s => s.id === subjectId);
+    const resp = await fetch('/.netlify/functions/generate-qcm', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        subject: sub ? sub.name : subjectId,
+        pdfText,
+        count: 10,
+        difficulty: 'Moyen'
+      })
+    });
+
+    if (!resp.ok) throw new Error('Erreur serveur ' + resp.status);
+    const data = await resp.json();
+    if (!data.questions?.length) throw new Error('Réponse invalide');
+
+    GENERATED_QUIZ = {
+      id: 'pdf-' + Date.now(),
+      subject: sub ? sub.name : subjectId,
+      subjectColor: sub ? sub.color : 'blue',
+      chapter: pdfTitle,
+      difficulty: 'Moyen',
+      questions: data.questions
+    };
+
+    startQuiz(true);
+
+  } catch(e) {
+    console.error('generateQcmFromPdf:', e);
+    toast('Erreur : ' + e.message, 'warn');
+    document.querySelectorAll('.pdf-gen-btn').forEach(b => {
+      b.disabled = false;
+      b.innerHTML = ic('sparkle') + ' QCM';
+    });
+  }
+}
+
+async function extractPdfText(pdfUrl) {
+  if (!window.pdfjsLib) throw new Error('PDF.js non chargé');
+  window.pdfjsLib.GlobalWorkerOptions.workerSrc =
+    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  const pdf = await window.pdfjsLib.getDocument(pdfUrl).promise;
+  let text = '';
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const content = await page.getTextContent();
+    text += content.items.map(s => s.str).join(' ') + '\n';
+  }
+  return text;
+}

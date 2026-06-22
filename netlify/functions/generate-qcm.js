@@ -8,7 +8,7 @@ exports.handler = async (event) => {
   }
 
   try {
-    const { subject, chapter, count, difficulty } = JSON.parse(event.body);
+    const { subject, chapter, count, difficulty, pdfText } = JSON.parse(event.body);
     const apiKey = process.env.GROQ_API_KEY;
 
     if (!apiKey) {
@@ -18,8 +18,34 @@ exports.handler = async (event) => {
       };
     }
 
-    const chapStr = chapter ? `, chapitre : "${chapter}"` : ' (tous chapitres)';
-    const prompt = `Tu es un professeur de médecine qui crée des QCM pour des étudiants de première année (L1) à l'Université Protestante au Congo (UPC), Kinshasa.
+    let prompt;
+    if (pdfText) {
+      prompt = `Tu es un professeur de médecine qui crée des QCM pour des étudiants de première année (L1) à l'Université Protestante au Congo (UPC), Kinshasa.
+
+Voici le contenu d'un cours de ${subject} :
+---
+${pdfText.slice(0, 15000)}
+---
+
+À partir de ce contenu UNIQUEMENT, génère exactement ${count} questions QCM en français.
+Niveau de difficulté : ${difficulty}.
+- Facile : définitions, terminologie, mémorisation directe
+- Moyen : mécanismes, relations cause-effet, application simple
+- Difficile : intégration de plusieurs notions, cas cliniques simples, raisonnement
+
+Réponds UNIQUEMENT avec un objet JSON valide, sans markdown ni texte autour. Format exact :
+{"questions":[{"q":"Texte de la question","opts":["Option 1","Option 2","Option 3","Option 4"],"correct":1,"exp":"Explication de 1 à 2 phrases basée sur le contenu du cours.","src":"${subject}"}]}
+
+Règles importantes :
+- "correct" est l'index (0, 1, 2 ou 3) de la bonne réponse dans "opts"
+- Pose des questions UNIQUEMENT sur ce qui est présent dans le cours fourni
+- Les 4 options doivent être médicalement plausibles, bien formulées
+- Varie la position de la bonne réponse entre les questions
+- Langage médical précis mais accessible à L1
+- Aucun markdown, aucun texte en dehors du JSON`;
+    } else {
+      const chapStr = chapter ? `, chapitre : "${chapter}"` : ' (tous chapitres)';
+      prompt = `Tu es un professeur de médecine qui crée des QCM pour des étudiants de première année (L1) à l'Université Protestante au Congo (UPC), Kinshasa.
 
 Génère exactement ${count} questions QCM en français sur la matière : "${subject}"${chapStr}.
 Niveau de difficulté : ${difficulty}.
@@ -36,6 +62,7 @@ Règles importantes :
 - Varie la position de la bonne réponse entre les questions
 - Langage médical précis mais accessible à L1
 - Aucun markdown, aucun texte en dehors du JSON`;
+    }
 
     const requestBody = JSON.stringify({
       model: 'llama-3.3-70b-versatile',
