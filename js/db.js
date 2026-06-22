@@ -24,7 +24,7 @@ async function submitScore(subject, correct, total) {
   if (!pseudo) return;
   try {
     const score = Math.round(correct / total * 100);
-    const { error } = await getSupa().from('scores').insert({ pseudo, subject, score, correct, total });
+    const { error } = await getSupa().from('score').insert({ pseudo, subject, score, correct, total });
     if (error) console.warn('submitScore:', error.message);
   } catch(e) {
     console.warn('Score non envoyé :', e.message);
