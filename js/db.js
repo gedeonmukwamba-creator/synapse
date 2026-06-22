@@ -38,7 +38,7 @@ async function fetchLeaderboard() {
   try {
     const supa = getSupa();
     const query = supa
-      .from('scores')
+      .from('score')
       .select('pseudo, subject, score, correct, total, created_at')
       .order('created_at', { ascending: false })
       .limit(200);
